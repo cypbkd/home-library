@@ -1,0 +1,158 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Library App</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        body { padding-top: 5rem; }
+        .footer {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            height: 60px; /* Set the fixed height of the footer here */
+            line-height: 60px; /* Vertically center the text there */
+            background-color: #f5f5f5;
+            text-align: center;
+        }
+    </style>
+    <style>
+        .star-rating {
+            display: inline-block;
+            font-size: 1.5rem;
+        }
+        .star-rating .fa-star {
+            color: #d3d3d3; /* Empty star color */
+            cursor: pointer;
+        }
+        .star-rating .fa-star.checked {
+            color: #ffc107; /* Filled star color (yellow) */
+        }
+        .star-rating .fa-star:hover,
+        .star-rating .fa-star:hover ~ .fa-star {
+            color: #ffc107; /* Hover color */
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
+        <a class="navbar-brand" href="/">Book Library</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExampleDefault" aria-controls="navbarsExampleDefault" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarsExampleDefault">
+            <ul class="navbar-nav mr-auto">
+                <li class="nav-item active">
+                    <a class="nav-link" href="/">Home <span class="sr-only">(current)</span></a>
+                </li>
+                
+            </ul>
+            <ul class="navbar-nav">
+                
+                <li class="nav-item">
+                    <a class="nav-link" href="/login">Login</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/register">Register</a>
+                </li>
+                
+            </ul>
+        </div>
+    </nav>
+
+    <main role="main" class="container">
+        
+            
+        
+        
+    <div class="jumbotron mt-4">
+        <h1 class="display-4">Welcome to Your Book Library!</h1>
+        <p class="lead">Manage your personal collection of books with ease.</p>
+        <hr class="my-4">
+        <p>Sign up or log in to start building your library today.</p>
+        <p class="lead">
+            <a class="btn btn-primary btn-lg" href="/register" role="button">Register</a>
+            <a class="btn btn-secondary btn-lg" href="/login" role="button">Login</a>
+        </p>
+    </div>
+
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <span class="text-muted">© 2026 Book Library App</span>
+        </div>
+    </footer>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const initStarRating = (containerId, inputName, initialRating) => {
+                const ratingContainer = document.getElementById(containerId);
+                if (!ratingContainer) return;
+
+                ratingContainer.innerHTML = ''; // Clear existing content
+                const hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = inputName;
+                hiddenInput.value = initialRating || '';
+                ratingContainer.appendChild(hiddenInput);
+
+                for (let i = 1; i <= 5; i++) {
+                    const star = document.createElement('i');
+                    star.classList.add('fas', 'fa-star');
+                    if (i <= initialRating) {
+                        star.classList.add('checked');
+                    }
+                    star.dataset.rating = i;
+                    ratingContainer.appendChild(star);
+
+                    star.addEventListener('click', () => {
+                        const newRating = parseInt(star.dataset.rating);
+                        hiddenInput.value = newRating;
+                        updateStars(ratingContainer, newRating);
+                    });
+
+                    star.addEventListener('mouseover', () => {
+                        const hoverRating = parseInt(star.dataset.rating);
+                        updateStars(ratingContainer, hoverRating, true);
+                    });
+
+                    ratingContainer.addEventListener('mouseout', () => {
+                        const currentRating = hiddenInput.value ? parseInt(hiddenInput.value) : 0;
+                        updateStars(ratingContainer, currentRating);
+                    });
+                }
+
+                function updateStars(container, rating, isHover = false) {
+                    const stars = container.querySelectorAll('.fa-star');
+                    stars.forEach(star => {
+                        const starRating = parseInt(star.dataset.rating);
+                        if (starRating <= rating) {
+                            star.classList.add('checked');
+                        } else {
+                            star.classList.remove('checked');
+                        }
+                    });
+                }
+            };
+
+            // Initialize for add_book.html
+            initStarRating('star-rating-add', 'rating', 0); // No initial rating for add
+
+            // Initialize for edit_book.html (requires passing existing rating)
+            const editRatingElement = document.getElementById('star-rating-edit');
+            if (editRatingElement) {
+                const initialEditRating = editRatingElement.dataset.initialRating ? parseInt(editRatingElement.dataset.initialRating) : 0;
+                initStarRating('star-rating-edit', 'rating', initialEditRating);
+            }
+        });
+    </script>
+</body>
+</html>

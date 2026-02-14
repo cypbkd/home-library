@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block content %}
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <h1 class="mt-4 mb-4">Add New Book</h1>
+
+            <!-- ISBN Scanner Section -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    Automatic ISBN Scan
+                </div>
+                <div class="card-body text-center">
+                    <div id="scanner-container">
+                        <video id="video" width="100%" height="auto" autoplay></video>
+                        <canvas id="canvas" style="display: none;"></canvas>
+                    </div>
+                    <div id="scan-result" class="mt-3">Starting automatic scan...</div>
+                </div>
+            </div>
+
+            <form method="POST" action="/add_book">
+                <div class="form-group">
+                    <label for="isbn">ISBN (10 or 13 digits)</label>
+                    <input type="text" class="form-control" id="isbn" name="isbn" placeholder="e.g., 978-0321765723" readonly>
+                    <small class="form-text text-muted">ISBN is automatically detected. You can manually override if needed.</small>
+                </div>
+                <div class="form-group">
+                    <label for="title">Title (Optional)</label>
+                    <input type="text" class="form-control" id="title" name="title">
+                </div>
+                <div class="form-group">
+                    <label for="author">Author (Optional)</label>
+                    <input type="text" class="form-control" id="author" name="author">
+                </div>
+                <div class="form-group">
+                    <label for="genre">Genre (Optional)</label>
+                    <input type="text" class="form-control" id="genre" name="genre">
+                </div>
+                <div class="form-group">
+                    <label for="cover_image_url">Cover Image URL (Optional)</label>
+                    <input type="url" class="form-control" id="cover_image_url" name="cover_image_url">
+                </div>
+                <div class="form-group">
+                    <label for="description">Description (Optional)</label>
+                    <textarea class="form-control" id="description" name="description" rows="5"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="status">Status</label>
+                    <select class="form-control" id="status" name="status">
+                        <option value="to-read">To Read</option>
+                        <option value="reading">Reading</option>
+                        <option value="read">Read</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Rating (Optional)</label>
+                    <div id="star-rating-add" class="star-rating"></div>
+                </div>
+                <button type="submit" class="btn btn-primary">Add Book</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const scannerContainer = document.getElementById('scanner-container');
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const isbnInput = document.getElementById('isbn');
+        const scanResult = document.getElementById('scan-result');
+        let stream;
+        let scanning = false;
+        let scanInterval;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await startScan();
+        });
+
+        async function startScan() {
+            scanResult.textContent = 'Starting camera...';
+            scanning = true;
+
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                video.srcObject = stream;
+                video.play();
+                scanResult.textContent = 'Camera active. Positioning ISBN in view for automatic scan...';
+
+                video.onloadedmetadata = () => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    scanInterval = setInterval(captureAndScan, 250); // Scan more frequently (every 250ms)
+                };
+
+            } catch (err) {
+                console.error("Error accessing camera: ", err);
+                scanResult.textContent = 'Error accessing camera. Please ensure camera permissions are granted and refresh.';
+                scanning = false;
+            }
+        }
+
+        function stopScan() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+            }
+            if (scanInterval) {
+                clearInterval(scanInterval);
+            }
+            scanning = false;
+            scanResult.textContent = 'Scan stopped.';
+            scanResult.classList.remove('text-success', 'text-danger');
+        }
+
+        async function captureAndScan() {
+            if (!scanning || video.paused || video.ended) {
+                return;
+            }
+
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageData = canvas.toDataURL('image/png'); // Get image data as base64
+
+            // Only update status if no ISBN is found yet
+            if (!isbnInput.value) {
+                scanResult.classList.remove('text-success', 'text-danger');
+                scanResult.textContent = 'Scanning for ISBN...';
+            }
+
+            try {
+                const response = await fetch('/scan_isbn', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ image: imageData })
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.isbn) {
+                    isbnInput.value = data.isbn;
+                    scanResult.classList.remove('text-info'); // Remove initial info class
+                    scanResult.classList.add('text-success'); // Add green class
+                    scanResult.textContent = `ISBN Scanned: ${data.isbn}. Book will be added automatically in 3 seconds.`;
+                    stopScan(); // Stop scanning once ISBN is found
+
+                    // Auto-submit after 3 seconds
+                    setTimeout(() => {
+                        document.querySelector('form').submit();
+                    }, 3000);
+
+                } else if (!isbnInput.value) { // Only update if no ISBN is found yet
+                    scanResult.classList.remove('text-success');
+                    scanResult.classList.add('text-info');
+                    scanResult.textContent = data.message || 'No valid ISBN barcode found yet. Keep trying...';
+                }
+            } catch (error) {
+                console.error('Error scanning ISBN:', error);
+                if (!isbnInput.value) { // Only update if no ISBN is found yet
+                    scanResult.classList.remove('text-success');
+                    scanResult.classList.add('text-danger'); // Use danger for errors
+                    scanResult.textContent = 'Error during ISBN scan. Retrying...';
+                }
+            }
+        }
+    </script>
+{% endblock %}

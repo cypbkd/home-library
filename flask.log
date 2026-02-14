@@ -1,0 +1,40 @@
+ * Serving Flask app 'book_library_app.app:create_app'
+ * Debug mode: off
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+[33mPress CTRL+C to quit[0m
+127.0.0.1 - - [14/Feb/2026 21:36:17] "GET /books HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 21:36:18] "GET /books HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 21:36:21] "[32mPOST /delete_book/2 HTTP/1.1[0m" 302 -
+127.0.0.1 - - [14/Feb/2026 21:36:21] "GET /books HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 21:36:23] "GET /add_book HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 21:36:25] "[33mPOST /scan_isbn HTTP/1.1[0m" 404 -
+127.0.0.1 - - [14/Feb/2026 21:36:26] "[33mPOST /scan_isbn HTTP/1.1[0m" 404 -
+127.0.0.1 - - [14/Feb/2026 21:36:27] "[33mPOST /scan_isbn HTTP/1.1[0m" 404 -
+127.0.0.1 - - [14/Feb/2026 21:36:28] "[33mPOST /scan_isbn HTTP/1.1[0m" 404 -
+127.0.0.1 - - [14/Feb/2026 21:36:29] "POST /scan_isbn HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 21:36:33] "[32mPOST /add_book HTTP/1.1[0m" 302 -
+127.0.0.1 - - [14/Feb/2026 21:36:33] "GET /books HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 21:36:39] "GET /edit_book/2 HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 21:36:43] "GET /add_book HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 21:36:46] "POST /scan_isbn HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 21:36:50] "[32mPOST /add_book HTTP/1.1[0m" 302 -
+127.0.0.1 - - [14/Feb/2026 21:36:50] "GET /books HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 21:38:01] "GET /books HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 21:38:02] "GET /add_book HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 21:38:05] "[33mPOST /scan_isbn HTTP/1.1[0m" 404 -
+127.0.0.1 - - [14/Feb/2026 21:38:06] "[33mPOST /scan_isbn HTTP/1.1[0m" 404 -
+127.0.0.1 - - [14/Feb/2026 21:38:07] "[31m[1mPOST /scan_isbn HTTP/1.1[0m" 409 -
+127.0.0.1 - - [14/Feb/2026 21:38:08] "[31m[1mPOST /scan_isbn HTTP/1.1[0m" 409 -
+127.0.0.1 - - [14/Feb/2026 21:38:09] "[33mPOST /scan_isbn HTTP/1.1[0m" 404 -
+127.0.0.1 - - [14/Feb/2026 21:38:12] "[32mPOST /delete_book/1 HTTP/1.1[0m" 302 -
+127.0.0.1 - - [14/Feb/2026 21:38:12] "GET /books HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 21:38:14] "GET /add_book HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 21:38:17] "[33mPOST /scan_isbn HTTP/1.1[0m" 404 -
+127.0.0.1 - - [14/Feb/2026 21:38:18] "[33mPOST /scan_isbn HTTP/1.1[0m" 404 -
+127.0.0.1 - - [14/Feb/2026 21:38:19] "[33mPOST /scan_isbn HTTP/1.1[0m" 404 -
+127.0.0.1 - - [14/Feb/2026 21:38:20] "[33mPOST /scan_isbn HTTP/1.1[0m" 404 -
+127.0.0.1 - - [14/Feb/2026 21:38:21] "[33mPOST /scan_isbn HTTP/1.1[0m" 404 -
+127.0.0.1 - - [14/Feb/2026 21:38:22] "POST /scan_isbn HTTP/1.1" 200 -
+127.0.0.1 - - [14/Feb/2026 21:38:24] "[32mPOST /add_book HTTP/1.1[0m" 302 -
+127.0.0.1 - - [14/Feb/2026 21:38:24] "GET /books HTTP/1.1" 200 -
