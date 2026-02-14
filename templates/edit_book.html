@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <h1 class="mt-4 mb-4">Edit Book: {{ book.title }}</h1>
+
+            <form method="POST" action="/edit_book/{{ user_book.id }}">
+                <div class="form-group">
+                    <label for="isbn">ISBN (10 or 13 digits)</label>
+                    <input type="text" class="form-control" id="isbn" name="isbn" value="{{ book.isbn }}" readonly>
+                    <small class="form-text text-muted">ISBN cannot be changed.</small>
+                </div>
+                <div class="form-group">
+                    <label for="title">Title</label>
+                    <input type="text" class="form-control" id="title" name="title" value="{{ book.title }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="author">Author</label>
+                    <input type="text" class="form-control" id="author" name="author" value="{{ book.author }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="genre">Genre (Optional)</label>
+                    <input type="text" class="form-control" id="genre" name="genre" value="{{ book.genre if book.genre else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="cover_image_url">Cover Image URL (Optional)</label>
+                    <input type="url" class="form-control" id="cover_image_url" name="cover_image_url" value="{{ book.cover_image_url if book.cover_image_url else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="description">Description (Optional)</label>
+                    <textarea class="form-control" id="description" name="description" rows="5">{{ book.description if book.description else '' }}</textarea>
+                </div>
+                <div class="form-group">
+                    <label for="status">Status</label>
+                    <select class="form-control" id="status" name="status">
+                        <option value="to-read" {% if user_book.status == 'to-read' %}selected{% endif %}>To Read</option>
+                        <option value="reading" {% if user_book.status == 'reading' %}selected{% endif %}>Reading</option>
+                        <option value="read" {% if user_book.status == 'read' %}selected{% endif %}>Read</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Rating (Optional)</label>
+                    <div id="star-rating-edit" class="star-rating" data-initial-rating="{{ user_book.rating if user_book.rating else 0 }}"></div>
+                </div>
+                <button type="submit" class="btn btn-primary">Update Book</button>
+            </form>
+        </div>
+    </div>
+{% endblock %}

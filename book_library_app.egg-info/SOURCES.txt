@@ -1,0 +1,8 @@
+setup.py
+book_library_app.egg-info/PKG-INFO
+book_library_app.egg-info/SOURCES.txt
+book_library_app.egg-info/dependency_links.txt
+book_library_app.egg-info/requires.txt
+book_library_app.egg-info/top_level.txt
+tests/test_authentication.py
+tests/test_book_management.py
