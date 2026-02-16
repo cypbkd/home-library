@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, url_for, flash, redirect, session, jsonify, current_app
 from flask_login import login_user, current_user, logout_user, login_required, UserMixin # Import necessary Flask-Login functions
 from flask_migrate import Migrate
-from .config import Config
+from config import Config
 from datetime import datetime
 import os
 import base64
@@ -9,9 +9,9 @@ from io import BytesIO
 from PIL import Image
 from pyzbar.pyzbar import decode
 import threading
-from .tasks import fetch_book_metadata
-from .extensions import db, login_manager # Import db and login_manager from extensions
-from .models import User, Book, UserBook # Import models after db and login_manager are initialized
+from tasks import fetch_book_metadata
+from extensions import db, login_manager # Import db and login_manager from extensions
+from models import User, Book, UserBook # Import models after db and login_manager are initialized
 from werkzeug.security import generate_password_hash, check_password_hash # Import for User model methods
 
 def create_app(config_class=Config):

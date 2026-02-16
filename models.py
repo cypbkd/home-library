@@ -1,6 +1,6 @@
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from flask_login import UserMixin
-from .extensions import db # Import db from extensions
+from extensions import db # Import db from extensions
 
 
 class User(db.Model, UserMixin):
@@ -12,7 +12,7 @@ class User(db.Model, UserMixin):
 
     def set_password(self, password):
         from werkzeug.security import generate_password_hash
-        self.password_hash = generate_password_hash(password)
+        self.password_hash = generate_password_hash(password, method='pbkdf2:sha256')
 
     def check_password(self, password):
         from werkzeug.security import check_password_hash
@@ -38,7 +38,7 @@ class UserBook(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     book_id = db.Column(db.Integer, db.ForeignKey('book.id'), nullable=False)
-    date_added = db.Column(db.DateTime, nullable=False, default=datetime.now(UTC))
+    date_added = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     status = db.Column(db.String(20), nullable=False, default='to-read')
     rating = db.Column(db.Integer, nullable=True)
     sync_status = db.Column(db.String(50), nullable=False, default='PENDING_SYNC')

@@ -7,8 +7,8 @@ from flask import current_app
 GOOGLE_BOOKS_API_KEY = os.environ.get('GOOGLE_BOOKS_API_KEY')
 
 def fetch_book_metadata(app, user_book_id):
-    from .extensions import db
-    from .models import Book, UserBook
+    from extensions import db
+    from models import Book, UserBook
 
     with app.app_context():
         user_book = db.session.get(UserBook, user_book_id)
