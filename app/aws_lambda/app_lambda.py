@@ -5,7 +5,6 @@ This is the main application file for serverless deployment.
 from flask import Flask, render_template, request, url_for, flash, redirect, session, jsonify
 from flask_login import LoginManager, login_user, current_user, logout_user, login_required, UserMixin
 import os
-import base64
 from datetime import datetime, timezone
 import json
 from decimal import Decimal
@@ -261,79 +260,41 @@ def delete_book(user_book_id):
 @app.route('/scan_isbn', methods=['POST'])
 @login_required
 def scan_isbn():
-    data = request.get_json()
-    if not data or 'image' not in data:
-        return jsonify({'success': False, 'message': 'No image data provided.'}), 400
+    data = request.get_json() or {}
+    if 'isbn' not in data:
+        return jsonify({'success': False, 'message': 'No ISBN provided.'}), 400
 
-    image_data = data['image']
-    if ';base64,' in image_data:
-        _, encoded = image_data.split(';base64,', 1)
-    else:
-        encoded = image_data
+    isbn = str(data['isbn']).replace('-', '').replace(' ', '')
+    if not ((len(isbn) == 10 and isbn.isdigit()) or (len(isbn) == 13 and isbn.isdigit())):
+        return jsonify({'success': False, 'message': 'Invalid ISBN. Expected 10 or 13 digits.'}), 400
 
-    try:
-        BytesIO, Image, decode = _get_barcode_decoder()
-    except ImportError:
+    book = DynamoDBBook.get_by_isbn(isbn)
+    if not book:
+        book = DynamoDBBook.create(isbn, 'Fetching Title...', 'Fetching Author...')
+
+    existing = DynamoDBUserBook.get(current_user.id, book['book_id'])
+    if existing:
         return jsonify({
             'success': False,
-            'message': 'Barcode dependencies are not available in this environment.'
-        }), 503
+            'message': 'Book already in your library.',
+            'isbn': isbn
+        }), 409
 
-    try:
-        decoded_image = base64.b64decode(encoded)
-        image = Image.open(BytesIO(decoded_image))
-        if image.mode != 'L':
-            image = image.convert('L')
-        barcodes = decode(image)
+    user_book = DynamoDBUserBook.create(
+        current_user.id,
+        book['book_id'],
+        'to-read',
+        None,
+        'PENDING'
+    )
+    if user_book:
+        fetch_book_metadata_async(user_book['user_book_id'])
 
-        for barcode in barcodes:
-            try:
-                isbn = barcode.data.decode('utf-8').replace('-', '')
-            except UnicodeDecodeError:
-                continue
-
-            if not ((len(isbn) == 10 and isbn.isdigit()) or (len(isbn) == 13 and isbn.isdigit())):
-                continue
-
-            book = DynamoDBBook.get_by_isbn(isbn)
-            if not book:
-                book = DynamoDBBook.create(isbn, 'Fetching Title...', 'Fetching Author...')
-
-            existing = DynamoDBUserBook.get(current_user.id, book['book_id'])
-            if existing:
-                return jsonify({
-                    'success': False,
-                    'message': 'Book already in your library.',
-                    'isbn': isbn
-                }), 409
-
-            user_book = DynamoDBUserBook.create(
-                current_user.id,
-                book['book_id'],
-                'to-read',
-                None,
-                'PENDING'
-            )
-            if user_book:
-                fetch_book_metadata_async(user_book['user_book_id'])
-
-            return jsonify({
-                'success': True,
-                'isbn': isbn,
-                'message': 'Book added. Fetching metadata...'
-            })
-
-        return jsonify({'success': False, 'message': 'No valid ISBN barcode found.'}), 404
-    except Exception as e:
-        print(f"Error processing image for ISBN: {e}")
-        return jsonify({'success': False, 'message': f'Error processing image: {str(e)}'}), 500
-
-
-def _get_barcode_decoder():
-    from io import BytesIO
-    from PIL import Image
-    from pyzbar.pyzbar import decode
-    return BytesIO, Image, decode
+    return jsonify({
+        'success': True,
+        'isbn': isbn,
+        'message': 'Book added. Fetching metadata...'
+    })
 
 
 # Health check endpoint

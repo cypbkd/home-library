@@ -4,14 +4,6 @@ from flask_migrate import Migrate
 from config import Config
 from datetime import datetime
 import os
-import base64
-from io import BytesIO
-try:
-    from PIL import Image
-    from pyzbar.pyzbar import decode
-except ImportError:  # Optional in local/test environments without native zbar
-    Image = None
-    decode = None
 import threading
 from tasks import fetch_book_metadata
 from extensions import db, login_manager # Import db and login_manager from extensions
@@ -202,64 +194,36 @@ def create_app(config_class=Config):
     @app.route('/scan_isbn', methods=['POST'])
     @login_required # Ensure user is logged in to add books
     def scan_isbn():
-        if Image is None or decode is None:
-            return jsonify({'success': False, 'message': 'Barcode scanning dependencies are not installed.'}), 503
+        data = request.get_json() or {}
+        if 'isbn' not in data:
+            return jsonify({'success': False, 'message': 'No ISBN provided.'}), 400
 
-        data = request.get_json()
-        if not data or 'image' not in data:
-            return jsonify({'success': False, 'message': 'No image data provided.'}), 400
+        isbn = str(data['isbn']).replace('-', '').replace(' ', '')
+        if not ((len(isbn) == 10 and isbn.isdigit()) or (len(isbn) == 13 and isbn.isdigit())):
+            return jsonify({'success': False, 'message': 'Invalid ISBN. Expected 10 or 13 digits.'}), 400
 
-        image_data = data['image']
-        if ';base64,' in image_data:
-            header, encoded = image_data.split(';base64,', 1)
-        else:
-            encoded = image_data
+        book = Book.query.filter_by(isbn=isbn).first()
+        if not book:
+            # Create a placeholder book if not found, metadata will be fetched later
+            book = Book(isbn=isbn, title='Fetching Title...', author='Fetching Author...')
+            db.session.add(book)
+            db.session.commit()
 
-        try:
-            decoded_image = base64.b64decode(encoded)
-            image = Image.open(BytesIO(decoded_image))
-            if image.mode != 'L':
-                image = image.convert('L')
-            barcodes = decode(image)
+        user_book = UserBook.query.filter_by(user_id=current_user.id, book_id=book.id).first()
+        if user_book:
+            return jsonify({'success': False, 'message': 'Book already in your library.', 'isbn': isbn}), 409
 
-            for barcode in barcodes:
-                try:
-                    isbn = barcode.data.decode('utf-8')
-                    isbn = isbn.replace('-', '')
-                    if (len(isbn) == 10 and isbn.isdigit()) or \
-                       (len(isbn) == 13 and isbn.isdigit()):
+        new_user_book = UserBook(user_id=current_user.id, book_id=book.id, status='to-read', sync_status='PENDING_SYNC')
+        db.session.add(new_user_book)
+        db.session.commit()
 
-                        book = Book.query.filter_by(isbn=isbn).first()
-                        if not book:
-                            # Create a placeholder book if not found, metadata will be fetched later
-                            book = Book(isbn=isbn, title='Fetching Title...', author='Fetching Author...')
-                            db.session.add(book)
-                            db.session.commit()
+        # Start background task to fetch metadata
+        if not current_app.config.get('TESTING'):
+            thread = threading.Thread(target=fetch_book_metadata, args=(current_app._get_current_object(), new_user_book.id))
+            thread.daemon = True
+            thread.start()
 
-                        user_book = UserBook.query.filter_by(user_id=current_user.id, book_id=book.id).first()
-                        if user_book:
-                            return jsonify({'success': False, 'message': 'Book already in your library.', 'isbn': isbn}), 409
-
-                        new_user_book = UserBook(user_id=current_user.id, book_id=book.id, status='to-read', sync_status='PENDING_SYNC')
-                        db.session.add(new_user_book)
-                        db.session.commit()
-
-                        # Start background task to fetch metadata
-                        if not current_app.config.get('TESTING'):
-                            thread = threading.Thread(target=fetch_book_metadata, args=(current_app._get_current_object(), new_user_book.id))
-                            thread.daemon = True
-                            thread.start()
-
-                        return jsonify({'success': True, 'isbn': isbn, 'message': 'Book added. Fetching metadata...'})
-                except UnicodeDecodeError:
-                    print(f"Could not decode barcode data: {barcode.data}")
-                    continue
-
-            return jsonify({'success': False, 'message': 'No valid ISBN barcode found.'}), 404
-
-        except Exception as e:
-            print(f"Error processing image for ISBN: {e}")
-            return jsonify({'success': False, 'message': f'Error processing image: {str(e)}'}), 500
+        return jsonify({'success': True, 'isbn': isbn, 'message': 'Book added. Fetching metadata...'})
 
     return app
 

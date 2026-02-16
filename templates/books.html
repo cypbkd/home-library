@@ -96,7 +96,13 @@
                             {% endif %}
                             <li class="list-group-item d-flex justify-content-between align-items-center p-1">
                                 <small class="text-muted">Added:</small>
-                                <small class="text-muted">{{ user_book.date_added.strftime('%Y-%m-%d') }}</small>
+                                <small class="text-muted">
+                                    {% if user_book.date_added is string %}
+                                        {{ user_book.date_added[:10] }}
+                                    {% elif user_book.date_added %}
+                                        {{ user_book.date_added.strftime('%Y-%m-%d') }}
+                                    {% endif %}
+                                </small>
                             </li>
                         </ul>
                     </div>

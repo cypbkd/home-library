@@ -1,8 +1,6 @@
-import base64
 from pathlib import Path
 import sys
 import unittest
-from io import BytesIO
 from unittest.mock import patch
 import types
 
@@ -45,11 +43,6 @@ if "boto3.dynamodb.conditions" not in sys.modules:
 import app_lambda
 
 
-def _payload():
-    encoded = base64.b64encode(b"fake-image-bytes").decode("utf-8")
-    return {"image": f"data:image/png;base64,{encoded}"}
-
-
 class LambdaScanIsbnTests(unittest.TestCase):
     def setUp(self):
         app_lambda.app.config["TESTING"] = True
@@ -59,29 +52,10 @@ class LambdaScanIsbnTests(unittest.TestCase):
             session["_fresh"] = True
 
     def test_scan_isbn_success(self):
-        class FakeImage:
-            mode = "RGB"
-
-            def convert(self, mode):
-                self.mode = mode
-                return self
-
-        class FakeImageModule:
-            @staticmethod
-            def open(_file_obj):
-                return FakeImage()
-
-        class FakeBarcode:
-            data = b"9781234567890"
-
         with patch.object(
             app_lambda.DynamoDBUser,
             "get_by_id",
             staticmethod(lambda _user_id: {"user_id": "user-123", "username": "tester", "email": "t@example.com"}),
-        ), patch.object(
-            app_lambda,
-            "_get_barcode_decoder",
-            lambda: (BytesIO, FakeImageModule, lambda _image: [FakeBarcode()]),
         ), patch.object(
             app_lambda.DynamoDBBook,
             "get_by_isbn",
@@ -103,29 +77,59 @@ class LambdaScanIsbnTests(unittest.TestCase):
             "fetch_book_metadata_async",
             lambda _user_book_id: None,
         ):
-            response = self.client.post("/scan_isbn", json=_payload())
+            response = self.client.post("/scan_isbn", json={"isbn": "978-1234567890"})
             body = response.get_json()
 
             self.assertEqual(response.status_code, 200)
             self.assertTrue(body["success"])
             self.assertEqual(body["isbn"], "9781234567890")
 
-    def test_scan_isbn_returns_503_when_dependencies_missing(self):
+    def test_scan_isbn_from_photo_value(self):
+        # ISBN visible in provided photo: 978-0-671-02703-2
         with patch.object(
             app_lambda.DynamoDBUser,
             "get_by_id",
             staticmethod(lambda _user_id: {"user_id": "user-123", "username": "tester", "email": "t@example.com"}),
         ), patch.object(
+            app_lambda.DynamoDBBook,
+            "get_by_isbn",
+            staticmethod(lambda _isbn: None),
+        ), patch.object(
+            app_lambda.DynamoDBBook,
+            "create",
+            staticmethod(lambda isbn, title, author: {"book_id": "book-1", "isbn": isbn, "title": title, "author": author}),
+        ), patch.object(
+            app_lambda.DynamoDBUserBook,
+            "get",
+            staticmethod(lambda _uid, _bid: None),
+        ), patch.object(
+            app_lambda.DynamoDBUserBook,
+            "create",
+            staticmethod(lambda *_args, **_kwargs: {"user_book_id": "ub-1"}),
+        ), patch.object(
             app_lambda,
-            "_get_barcode_decoder",
-            lambda: (_ for _ in ()).throw(ImportError("missing barcode libs")),
+            "fetch_book_metadata_async",
+            lambda _user_book_id: None,
         ):
-            response = self.client.post("/scan_isbn", json=_payload())
+            response = self.client.post("/scan_isbn", json={"isbn": "978-0-671-02703-2"})
             body = response.get_json()
 
-            self.assertEqual(response.status_code, 503)
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(body["success"])
+            self.assertEqual(body["isbn"], "9780671027032")
+
+    def test_scan_isbn_rejects_missing_isbn(self):
+        with patch.object(
+            app_lambda.DynamoDBUser,
+            "get_by_id",
+            staticmethod(lambda _user_id: {"user_id": "user-123", "username": "tester", "email": "t@example.com"}),
+        ):
+            response = self.client.post("/scan_isbn", json={})
+            body = response.get_json()
+
+            self.assertEqual(response.status_code, 400)
             self.assertFalse(body["success"])
-            self.assertIn("dependencies", body["message"].lower())
+            self.assertIn("isbn", body["message"].lower())
 
 
 if __name__ == "__main__":

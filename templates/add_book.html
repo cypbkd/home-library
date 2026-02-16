@@ -61,6 +61,7 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.2/dist/quagga.min.js"></script>
     <script>
         const scannerContainer = document.getElementById('scanner-container');
         const video = document.getElementById('video');
@@ -70,6 +71,41 @@
         let stream;
         let scanning = false;
         let scanInterval;
+        let barcodeDetector = null;
+        let isDecodingFrame = false;
+        let useQuaggaFallback = false;
+
+        function normalizeIsbn(value) {
+            return String(value || '').replace(/[-\s]/g, '');
+        }
+
+        function isValidIsbn(value) {
+            const isbn = normalizeIsbn(value);
+            return (isbn.length === 10 || isbn.length === 13) && /^\d+$/.test(isbn);
+        }
+
+        async function setupDecoder() {
+            if ('BarcodeDetector' in window) {
+                try {
+                    barcodeDetector = new BarcodeDetector({
+                        formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128']
+                    });
+                    scanResult.textContent = 'Camera active. Barcode detector ready.';
+                    return;
+                } catch (error) {
+                    console.warn('BarcodeDetector init failed, falling back to Quagga.', error);
+                }
+            }
+
+            if (typeof Quagga !== 'undefined') {
+                useQuaggaFallback = true;
+                scanResult.textContent = 'Camera active. Using fallback barcode decoder.';
+                return;
+            }
+
+            scanResult.textContent = 'Barcode scanning is not supported in this browser. Enter ISBN manually.';
+            scanning = false;
+        }
 
         document.addEventListener('DOMContentLoaded', async () => {
             await startScan();
@@ -83,12 +119,17 @@
                 stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
                 video.srcObject = stream;
                 video.play();
-                scanResult.textContent = 'Camera active. Positioning ISBN in view for automatic scan...';
+                scanResult.textContent = 'Camera active. Preparing barcode scanner...';
 
                 video.onloadedmetadata = () => {
                     canvas.width = video.videoWidth;
                     canvas.height = video.videoHeight;
-                    scanInterval = setInterval(captureAndScan, 250); // Scan more frequently (every 250ms)
+                    setupDecoder().then(() => {
+                        if (!scanning) {
+                            return;
+                        }
+                        scanInterval = setInterval(captureAndScan, 250);
+                    });
                 };
 
             } catch (err) {
@@ -111,14 +152,52 @@
             scanResult.classList.remove('text-success', 'text-danger');
         }
 
+        async function decodeWithBarcodeDetector() {
+            if (!barcodeDetector) {
+                return null;
+            }
+
+            const detections = await barcodeDetector.detect(canvas);
+            for (const detection of detections) {
+                if (isValidIsbn(detection.rawValue)) {
+                    return normalizeIsbn(detection.rawValue);
+                }
+            }
+            return null;
+        }
+
+        function decodeWithQuagga(imageData) {
+            if (!useQuaggaFallback) {
+                return Promise.resolve(null);
+            }
+
+            return new Promise((resolve) => {
+                Quagga.decodeSingle({
+                    src: imageData,
+                    numOfWorkers: 0,
+                    inputStream: { size: 800 },
+                    decoder: {
+                        readers: ['ean_reader', 'ean_8_reader', 'upc_reader', 'upc_e_reader', 'code_128_reader']
+                    }
+                }, (result) => {
+                    const code = result && result.codeResult ? result.codeResult.code : null;
+                    if (isValidIsbn(code)) {
+                        resolve(normalizeIsbn(code));
+                        return;
+                    }
+                    resolve(null);
+                });
+            });
+        }
+
         async function captureAndScan() {
-            if (!scanning || video.paused || video.ended) {
+            if (!scanning || video.paused || video.ended || isDecodingFrame) {
                 return;
             }
 
+            isDecodingFrame = true;
             const context = canvas.getContext('2d');
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const imageData = canvas.toDataURL('image/png'); // Get image data as base64
 
             // Only update status if no ISBN is found yet
             if (!isbnInput.value) {
@@ -127,12 +206,21 @@
             }
 
             try {
+                const imageData = canvas.toDataURL('image/png');
+                let scannedIsbn = await decodeWithBarcodeDetector();
+                if (!scannedIsbn) {
+                    scannedIsbn = await decodeWithQuagga(imageData);
+                }
+                if (!scannedIsbn) {
+                    return;
+                }
+
                 const response = await fetch('/scan_isbn', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ image: imageData })
+                    body: JSON.stringify({ isbn: scannedIsbn })
                 });
 
                 const data = await response.json();
@@ -161,6 +249,8 @@
                     scanResult.classList.add('text-danger'); // Use danger for errors
                     scanResult.textContent = 'Error during ISBN scan. Retrying...';
                 }
+            } finally {
+                isDecodingFrame = false;
             }
         }
     </script>
