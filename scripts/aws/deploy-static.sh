@@ -5,6 +5,9 @@
 
 set -e
 
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$( cd "${SCRIPT_DIR}/../.." && pwd )"
+
 ENVIRONMENT=${1:-dev}
 REGION=${AWS_REGION:-us-east-1}
 AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID:-$(aws sts get-caller-identity --query Account --output text)}
@@ -18,16 +21,16 @@ echo "Region: ${REGION}"
 echo "========================================="
 
 # Create temporary directory for static files
-STATIC_DIR="static-build"
-rm -rf ${STATIC_DIR}
-mkdir -p ${STATIC_DIR}
+STATIC_DIR="${SCRIPT_DIR}/static-build"
+rm -rf "${STATIC_DIR}"
+mkdir -p "${STATIC_DIR}"
 
 # Copy templates (these will be served by Lambda, but keeping for reference)
 echo "Preparing static files..."
-cp -r ../templates ${STATIC_DIR}/
+cp -r "${PROJECT_ROOT}/templates" "${STATIC_DIR}/"
 
 # Create a simple index.html for the S3 bucket root
-cat > ${STATIC_DIR}/index.html << 'EOF'
+cat > "${STATIC_DIR}/index.html" << 'EOF'
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -77,7 +80,7 @@ cat > ${STATIC_DIR}/index.html << 'EOF'
 EOF
 
 # Create error page
-cat > ${STATIC_DIR}/error.html << 'EOF'
+cat > "${STATIC_DIR}/error.html" << 'EOF'
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -104,7 +107,7 @@ cat > ${STATIC_DIR}/error.html << 'EOF'
 EOF
 
 echo "Uploading files to S3..."
-aws s3 sync ${STATIC_DIR} s3://${BUCKET_NAME}/ \
+aws s3 sync "${STATIC_DIR}" s3://${BUCKET_NAME}/ \
   --region ${REGION} \
   --delete \
   --cache-control "max-age=3600"
@@ -127,6 +130,6 @@ echo "Website URL: ${WEBSITE_URL}"
 echo "========================================="
 
 # Cleanup
-rm -rf ${STATIC_DIR}
+rm -rf "${STATIC_DIR}"
 
 echo "Deployment artifacts cleaned up."

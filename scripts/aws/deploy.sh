@@ -7,7 +7,7 @@ set -e
 
 # Get the directory where the script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "${SCRIPT_DIR}"
+PROJECT_ROOT="$( cd "${SCRIPT_DIR}/../.." && pwd )"
 
 # Configuration
 ENVIRONMENT=${1:-dev}
@@ -23,29 +23,32 @@ echo "Environment: ${ENVIRONMENT}"
 echo "Stack Name: ${STACK_NAME}"
 echo "Region: ${REGION}"
 echo "Working Directory: ${SCRIPT_DIR}"
+echo "Project Root: ${PROJECT_ROOT}"
 echo "========================================="
 
 # Create build directory
-BUILD_DIR="build"
-rm -rf ${BUILD_DIR}
-mkdir -p ${BUILD_DIR}
+BUILD_DIR="${SCRIPT_DIR}/build"
+LAMBDA_PACKAGE="${SCRIPT_DIR}/lambda-package.zip"
+rm -rf "${BUILD_DIR}"
+mkdir -p "${BUILD_DIR}"
 
 echo "Step 1: Installing Python dependencies..."
-python3 -m pip install -r requirements-lambda.txt -t ${BUILD_DIR} --quiet
+python3 -m pip install -r "${PROJECT_ROOT}/infra/aws/requirements-lambda.txt" -t "${BUILD_DIR}" --quiet
 
 echo "Step 2: Copying application code..."
-cp dynamodb_models.py ${BUILD_DIR}/
-cp app_lambda.py ${BUILD_DIR}/
-cp lambda_handler.py ${BUILD_DIR}/
-cp tasks_lambda.py ${BUILD_DIR}/
+cp "${PROJECT_ROOT}/app/aws_lambda/dynamodb_models.py" "${BUILD_DIR}/"
+cp "${PROJECT_ROOT}/app/aws_lambda/app_lambda.py" "${BUILD_DIR}/"
+cp "${PROJECT_ROOT}/app/aws_lambda/lambda_handler.py" "${BUILD_DIR}/"
+cp "${PROJECT_ROOT}/app/aws_lambda/tasks_lambda.py" "${BUILD_DIR}/"
 
 echo "Step 3: Copying templates..."
-cp -r ../templates ${BUILD_DIR}/
+cp -r "${PROJECT_ROOT}/templates" "${BUILD_DIR}/"
 
 echo "Step 4: Creating Lambda deployment package..."
-cd ${BUILD_DIR}
-zip -r ../lambda-package.zip . -q
-cd ..
+(
+  cd "${BUILD_DIR}"
+  zip -r "${LAMBDA_PACKAGE}" . -q
+)
 
 echo "Step 5: Uploading Lambda package to S3..."
 # Create S3 bucket for deployment artifacts if it doesn't exist
@@ -53,11 +56,11 @@ DEPLOYMENT_BUCKET="book-library-deployment-${REGION}-${AWS_ACCOUNT_ID:-$(aws sts
 aws s3 mb s3://${DEPLOYMENT_BUCKET} --region ${REGION} 2>/dev/null || true
 
 # Upload Lambda package
-aws s3 cp lambda-package.zip s3://${DEPLOYMENT_BUCKET}/lambda-package-${ENVIRONMENT}.zip --region ${REGION}
+aws s3 cp "${LAMBDA_PACKAGE}" s3://${DEPLOYMENT_BUCKET}/lambda-package-${ENVIRONMENT}.zip --region ${REGION}
 
 echo "Step 6: Deploying CloudFormation stack..."
 aws cloudformation deploy \
-  --template-file cloudformation-template.yaml \
+  --template-file "${PROJECT_ROOT}/infra/aws/cloudformation-template.yaml" \
   --stack-name ${STACK_NAME} \
   --parameter-overrides \
     Environment=${ENVIRONMENT} \
@@ -112,7 +115,7 @@ echo "3. Test the application"
 echo ""
 
 # Cleanup
-rm -rf ${BUILD_DIR}
-rm lambda-package.zip
+rm -rf "${BUILD_DIR}"
+rm -f "${LAMBDA_PACKAGE}"
 
 echo "Deployment artifacts cleaned up."

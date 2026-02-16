@@ -140,6 +140,7 @@ def handle_http_api_v2(event, context):
     http_method = http['method']
     path = http['path']
     headers = event.get('headers', {})
+    cookies = event.get('cookies', []) or []
     query_params = event.get('queryStringParameters') or {}
     body = event.get('body', '')
     is_base64 = event.get('isBase64Encoded', False)
@@ -180,6 +181,11 @@ def handle_http_api_v2(event, context):
         key = key.upper().replace('-', '_')
         if key not in ('CONTENT_TYPE', 'CONTENT_LENGTH'):
             environ[f'HTTP_{key}'] = value
+    
+    # HTTP API v2 commonly passes cookies in a dedicated top-level `cookies` array.
+    # Flask/Werkzeug expects them in HTTP_COOKIE.
+    if cookies:
+        environ['HTTP_COOKIE'] = '; '.join(cookies)
     
     # Call Flask app with both app and request context
     with app.app_context():

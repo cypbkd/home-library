@@ -5,9 +5,12 @@ Simulates API Gateway events and tests Lambda handler locally.
 import json
 import sys
 import os
+from pathlib import Path
 
-# Add current directory to path
-sys.path.insert(0, os.path.dirname(__file__))
+# Add Lambda source directory to path
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+LAMBDA_SRC_DIR = PROJECT_ROOT / "app" / "aws_lambda"
+sys.path.insert(0, str(LAMBDA_SRC_DIR))
 
 # Set environment variables for local testing
 os.environ['ENVIRONMENT'] = 'local'

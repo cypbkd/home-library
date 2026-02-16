@@ -1,7 +1,7 @@
 
 import pytest
 from flask import url_for
-from book_library_app.models import User # Changed back to absolute import
+from models import User
 
 def register_user(client, username, email, password):
     return client.post(

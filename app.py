@@ -6,8 +6,12 @@ from datetime import datetime
 import os
 import base64
 from io import BytesIO
-from PIL import Image
-from pyzbar.pyzbar import decode
+try:
+    from PIL import Image
+    from pyzbar.pyzbar import decode
+except ImportError:  # Optional in local/test environments without native zbar
+    Image = None
+    decode = None
 import threading
 from tasks import fetch_book_metadata
 from extensions import db, login_manager # Import db and login_manager from extensions
@@ -114,15 +118,16 @@ def create_app(config_class=Config):
                 flash('You have already added this book to your library.', 'warning')
                 return redirect(url_for('books'))
 
-            new_user_book = UserBook(user_id=current_user.id, book_id=book.id, status=status, sync_status='PENDING')
+            new_user_book = UserBook(user_id=current_user.id, book_id=book.id, status=status, sync_status='PENDING_SYNC')
             if rating:
                 new_user_book.rating = int(rating)
             db.session.add(new_user_book)
             db.session.commit()
 
-            thread = threading.Thread(target=fetch_book_metadata, args=(current_app._get_current_object(), new_user_book.id))
-            thread.daemon = True
-            thread.start()
+            if not current_app.config.get('TESTING'):
+                thread = threading.Thread(target=fetch_book_metadata, args=(current_app._get_current_object(), new_user_book.id))
+                thread.daemon = True
+                thread.start()
 
             flash(f'Book "{title}" added to your library! Metadata will be fetched in the background.', 'success')
             return redirect(url_for('books'))
@@ -197,6 +202,9 @@ def create_app(config_class=Config):
     @app.route('/scan_isbn', methods=['POST'])
     @login_required # Ensure user is logged in to add books
     def scan_isbn():
+        if Image is None or decode is None:
+            return jsonify({'success': False, 'message': 'Barcode scanning dependencies are not installed.'}), 503
+
         data = request.get_json()
         if not data or 'image' not in data:
             return jsonify({'success': False, 'message': 'No image data provided.'}), 400
@@ -232,14 +240,15 @@ def create_app(config_class=Config):
                         if user_book:
                             return jsonify({'success': False, 'message': 'Book already in your library.', 'isbn': isbn}), 409
 
-                        new_user_book = UserBook(user_id=current_user.id, book_id=book.id, status='to-read', sync_status='PENDING')
+                        new_user_book = UserBook(user_id=current_user.id, book_id=book.id, status='to-read', sync_status='PENDING_SYNC')
                         db.session.add(new_user_book)
                         db.session.commit()
 
                         # Start background task to fetch metadata
-                        thread = threading.Thread(target=fetch_book_metadata, args=(current_app._get_current_object(), new_user_book.id))
-                        thread.daemon = True
-                        thread.start()
+                        if not current_app.config.get('TESTING'):
+                            thread = threading.Thread(target=fetch_book_metadata, args=(current_app._get_current_object(), new_user_book.id))
+                            thread.daemon = True
+                            thread.start()
 
                         return jsonify({'success': True, 'isbn': isbn, 'message': 'Book added. Fetching metadata...'})
                 except UnicodeDecodeError:

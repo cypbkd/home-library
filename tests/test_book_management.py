@@ -1,8 +1,8 @@
 
 import pytest
 from flask import url_for
-from book_library_app.models import Book, UserBook, User # Changed back to absolute import
-from book_library_app.tests.test_authentication import register_user, login_user # Corrected import
+from models import Book, UserBook, User
+from tests.test_authentication import register_user, login_user
 
 def add_book(client, title, author, isbn):
     return client.post(

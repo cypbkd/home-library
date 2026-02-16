@@ -5,6 +5,10 @@
 
 set -e
 
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$( cd "${SCRIPT_DIR}/../.." && pwd )"
+TEMPLATE_FILE="${PROJECT_ROOT}/infra/aws/cloudformation-template.yaml"
+
 ENVIRONMENT=${1:-dev}
 STACK_NAME="BookLibrary-${ENVIRONMENT}"
 REGION=${AWS_REGION:-us-east-1}
@@ -34,7 +38,7 @@ fi
 echo "Updating stack with parameters..."
 aws cloudformation update-stack \
   --stack-name ${STACK_NAME} \
-  --template-body file://cloudformation-template.yaml \
+  --template-body file://${TEMPLATE_FILE} \
   --parameters ${PARAMS} \
   --capabilities CAPABILITY_NAMED_IAM \
   --region ${REGION}

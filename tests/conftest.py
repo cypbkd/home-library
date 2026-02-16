@@ -1,9 +1,9 @@
 
 import pytest
-from book_library_app.app import create_app
-from book_library_app.extensions import db
-from book_library_app.models import User, Book, UserBook
-from book_library_app.config import TestConfig
+from app import create_app
+from extensions import db
+from models import User, Book, UserBook
+from config import TestConfig
 
 @pytest.fixture(scope='module')
 def test_app():
