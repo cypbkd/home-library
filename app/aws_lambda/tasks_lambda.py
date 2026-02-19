@@ -90,15 +90,38 @@ def process_metadata_fetch(event, context):
                 print(f"[Metadata Worker] Successfully updated metadata for ISBN: {isbn}")
             else:
                 print(f"[Metadata Worker] No metadata found for ISBN: {isbn}")
+                updates = {}
+                if book.get('title') == 'Fetching Title...':
+                    updates['title'] = 'Unknown'
+                if book.get('author') == 'Fetching Author...':
+                    updates['author'] = 'Unknown'
+                if updates:
+                    DynamoDBBook.update(book['book_id'], **updates)
                 DynamoDBUserBook.update(user_book_id, sync_status='FAILED')
         
         except requests.exceptions.RequestException as e:
             print(f"[Metadata Worker] Request error: {e}")
             if 'user_book_id' in locals():
+                if 'book' in locals():
+                    updates = {}
+                    if book.get('title') == 'Fetching Title...':
+                        updates['title'] = 'Unknown'
+                    if book.get('author') == 'Fetching Author...':
+                        updates['author'] = 'Unknown'
+                    if updates:
+                        DynamoDBBook.update(book['book_id'], **updates)
                 DynamoDBUserBook.update(user_book_id, sync_status='FAILED')
         except Exception as e:
             print(f"[Metadata Worker] Unexpected error: {e}")
             if 'user_book_id' in locals():
+                if 'book' in locals():
+                    updates = {}
+                    if book.get('title') == 'Fetching Title...':
+                        updates['title'] = 'Unknown'
+                    if book.get('author') == 'Fetching Author...':
+                        updates['author'] = 'Unknown'
+                    if updates:
+                        DynamoDBBook.update(book['book_id'], **updates)
                 DynamoDBUserBook.update(user_book_id, sync_status='FAILED')
     
     return {

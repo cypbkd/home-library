@@ -6,3 +6,4 @@ Flask-Migrate
 Pillow
 pyzbar
 requests
+pytest

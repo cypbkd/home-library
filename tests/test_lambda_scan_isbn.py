@@ -46,6 +46,9 @@ import app_lambda
 class LambdaScanIsbnTests(unittest.TestCase):
     def setUp(self):
         app_lambda.app.config["TESTING"] = True
+        templates_dir = str(Path(__file__).resolve().parents[1] / "templates")
+        if templates_dir not in app_lambda.app.jinja_loader.searchpath:
+            app_lambda.app.jinja_loader.searchpath.append(templates_dir)
         self.client = app_lambda.app.test_client()
         with self.client.session_transaction() as session:
             session["_user_id"] = "user-123"
@@ -130,6 +133,41 @@ class LambdaScanIsbnTests(unittest.TestCase):
             self.assertEqual(response.status_code, 400)
             self.assertFalse(body["success"])
             self.assertIn("isbn", body["message"].lower())
+
+    def test_edit_book_form_posts_to_user_book_id(self):
+        with patch.object(
+            app_lambda.DynamoDBUser,
+            "get_by_id",
+            staticmethod(lambda _user_id: {"user_id": "user-123", "username": "tester", "email": "t@example.com"}),
+        ), patch.object(
+            app_lambda.DynamoDBUserBook,
+            "get_by_id",
+            staticmethod(
+                lambda _user_book_id: {
+                    "user_book_id": "ub-1",
+                    "user_id": "user-123",
+                    "book_id": "book-1",
+                    "status": "to-read",
+                    "rating": None,
+                }
+            ),
+        ), patch.object(
+            app_lambda.DynamoDBBook,
+            "get_by_id",
+            staticmethod(
+                lambda _book_id: {
+                    "book_id": "book-1",
+                    "isbn": "9781234567890",
+                    "title": "Test Book",
+                    "author": "Test Author",
+                }
+            ),
+        ):
+            response = self.client.get("/edit_book/ub-1")
+            html = response.get_data(as_text=True)
+
+            self.assertEqual(response.status_code, 200)
+            self.assertIn('action="/edit_book/ub-1"', html)
 
 
 if __name__ == "__main__":

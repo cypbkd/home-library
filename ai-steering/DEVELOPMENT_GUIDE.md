@@ -94,8 +94,14 @@ flask run
 Tests:
 
 ```bash
-./venv/bin/python -m pytest -q
+./scripts/test-suite.sh
 ```
+
+AI workflow requirement:
+- After any code change, run the full local test suite before finishing work:
+  - `./scripts/test-suite.sh`
+- If only a focused test is needed during iteration, use the same runner with a target path, then still run the full suite before completion:
+  - `./scripts/test-suite.sh tests/test_book_management.py`
 
 ## 5. AWS Deployment Workflow
 
@@ -136,7 +142,7 @@ curl "$API_ENDPOINT/home"
 ```
 
 Latest verified run (February 16, 2026):
-- Local tests: `./venv/bin/python -m pytest -q` -> `16 passed`
+- Local tests: `./scripts/test-suite.sh` -> `16 passed`
 - Deployed API endpoint: `https://hpfao6gnvl.execute-api.us-west-2.amazonaws.com`
 - Live checks:
   - `GET /health` returned `200` and `{"status":"healthy"}`
@@ -254,4 +260,5 @@ Security recommendations:
 
 - Keep this guide and `README.md` in sync when process changes.
 - Add tests for behavior changes (`/tests` folder).
+- Always run `./scripts/test-suite.sh` after any code change before considering work complete.
 - Prefer small, reviewable PRs with clear migration/deployment impact notes.

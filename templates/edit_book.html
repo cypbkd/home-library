@@ -4,7 +4,8 @@
         <div class="col-md-8">
             <h1 class="mt-4 mb-4">Edit Book: {{ book.title }}</h1>
 
-            <form method="POST" action="/edit_book/{{ user_book.id }}">
+            {% set edit_user_book_id = user_book.id if user_book.id is defined else user_book.user_book_id %}
+            <form method="POST" action="{{ url_for('edit_book', user_book_id=edit_user_book_id) }}">
                 <div class="form-group">
                     <label for="isbn">ISBN (10 or 13 digits)</label>
                     <input type="text" class="form-control" id="isbn" name="isbn" value="{{ book.isbn }}" readonly>
@@ -32,11 +33,18 @@
                 </div>
                 <div class="form-group">
                     <label for="status">Status</label>
-                    <select class="form-control" id="status" name="status">
-                        <option value="to-read" {% if user_book.status == 'to-read' %}selected{% endif %}>To Read</option>
-                        <option value="reading" {% if user_book.status == 'reading' %}selected{% endif %}>Reading</option>
-                        <option value="read" {% if user_book.status == 'read' %}selected{% endif %}>Read</option>
-                    </select>
+                    {% set current_status = user_book.status if user_book.status in ['to-read', 'reading', 'read'] else 'to-read' %}
+                    <div class="btn-group btn-group-toggle d-flex" data-toggle="buttons" id="status">
+                        <label class="btn btn-outline-secondary flex-fill {% if current_status == 'to-read' %}active{% endif %}">
+                            <input type="radio" name="status" value="to-read" autocomplete="off" {% if current_status == 'to-read' %}checked{% endif %}> To Read
+                        </label>
+                        <label class="btn btn-outline-secondary flex-fill {% if current_status == 'reading' %}active{% endif %}">
+                            <input type="radio" name="status" value="reading" autocomplete="off" {% if current_status == 'reading' %}checked{% endif %}> Reading
+                        </label>
+                        <label class="btn btn-outline-secondary flex-fill {% if current_status == 'read' %}active{% endif %}">
+                            <input type="radio" name="status" value="read" autocomplete="off" {% if current_status == 'read' %}checked{% endif %}> Read
+                        </label>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>Rating (Optional)</label>

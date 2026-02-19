@@ -117,3 +117,27 @@ def test_user_book_sync_status(test_client, init_database):
 
         updated_user_book = UserBook.query.filter_by(user_id=user.id, book_id=book.id).first()
         assert updated_user_book.sync_status == 'SYNCED'
+
+
+def test_edit_book_missing_id_redirects_to_books(test_client, init_database):
+    register_user(test_client, 'testuser', 'test@example.com', 'testpassword')
+    login_user(test_client, 'test@example.com', 'testpassword')
+
+    response = test_client.get('/edit_book/', follow_redirects=True)
+    assert b'Please choose a book to edit from your library.' in response.data
+    assert b'My Books' in response.data
+
+
+def test_edit_book_query_param_redirects_to_specific_book(test_client, init_database):
+    register_user(test_client, 'testuser', 'test@example.com', 'testpassword')
+    login_user(test_client, 'test@example.com', 'testpassword')
+    add_book(test_client, 'Redirect Target', 'Target Author', '3332221110009')
+
+    with test_client.application.app_context():
+        book = Book.query.filter_by(isbn='3332221110009').first()
+        user = User.query.filter_by(email='test@example.com').first()
+        user_book = UserBook.query.filter_by(user_id=user.id, book_id=book.id).first()
+
+    response = test_client.get(f'/edit_book/?user_book_id={user_book.id}')
+    assert response.status_code == 302
+    assert response.headers['Location'].endswith(f'/edit_book/{user_book.id}')

@@ -203,6 +203,43 @@ def add_book():
     return render_template('add_book.html', title='Add Book')
 
 
+@app.route("/manual_update_book/<string:user_book_id>", methods=['POST'])
+@login_required
+def manual_update_book(user_book_id):
+    user_book = DynamoDBUserBook.get_by_id(user_book_id)
+
+    if not user_book or user_book['user_id'] != current_user.id:
+        flash('You are not authorized to edit this book.', 'danger')
+        return redirect(url_for('books'))
+
+    book = DynamoDBBook.get_by_id(user_book['book_id'])
+    if not book:
+        flash('Book record not found.', 'danger')
+        return redirect(url_for('books'))
+
+    # Update book details
+    DynamoDBBook.update(
+        book['book_id'],
+        title=request.form['title'],
+        author=request.form['author'],
+        genre=request.form.get('genre'),
+        description=request.form.get('description'),
+        cover_image_url=request.form.get('cover_image_url')
+    )
+
+    # Update user-book relationship
+    rating = request.form.get('rating')
+    DynamoDBUserBook.update(
+        user_book_id,
+        status=request.form.get('status'),
+        rating=int(rating) if rating else None,
+        sync_status='SYNCED'
+    )
+
+    flash('Book details updated successfully!', 'success')
+    return redirect(url_for('books'))
+
+
 @app.route("/edit_book/<string:user_book_id>", methods=['GET', 'POST'])
 @login_required
 def edit_book(user_book_id):
@@ -241,6 +278,18 @@ def edit_book(user_book_id):
     user_book['rating'] = decimal_to_number(user_book.get('rating'))
     
     return render_template('edit_book.html', title='Edit Book', user_book=user_book, book=book)
+
+
+@app.route("/edit_book", methods=['GET'])
+@app.route("/edit_book/", methods=['GET'])
+@login_required
+def edit_book_missing_id():
+    user_book_id = request.args.get('user_book_id')
+    if user_book_id:
+        return redirect(url_for('edit_book', user_book_id=user_book_id))
+
+    flash('Please choose a book to edit from your library.', 'warning')
+    return redirect(url_for('books'))
 
 
 @app.route("/delete_book/<string:user_book_id>", methods=['POST'])

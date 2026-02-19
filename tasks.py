@@ -46,19 +46,35 @@ def fetch_book_metadata(app, user_book_id):
                 current_app.logger.info(f"[Background Task] Successfully fetched and updated metadata for {isbn}: {book.title}")
             else:
                 current_app.logger.info(f"[Background Task] No metadata found for ISBN: {isbn}")
+                if book.title == 'Fetching Title...':
+                    book.title = 'Unknown'
+                if book.author == 'Fetching Author...':
+                    book.author = 'Unknown'
                 user_book.sync_status = 'FAILED'
                 db.session.commit()
 
         except requests.exceptions.RequestException as e:
             current_app.logger.error(f"[Background Task] Error fetching metadata for ISBN {isbn}: {e}")
+            if book.title == 'Fetching Title...':
+                book.title = 'Unknown'
+            if book.author == 'Fetching Author...':
+                book.author = 'Unknown'
             user_book.sync_status = 'FAILED'
             db.session.commit()
         except json.JSONDecodeError:
             current_app.logger.error(f"[Background Task] Error decoding JSON for ISBN {isbn}")
+            if book.title == 'Fetching Title...':
+                book.title = 'Unknown'
+            if book.author == 'Fetching Author...':
+                book.author = 'Unknown'
             user_book.sync_status = 'FAILED'
             db.session.commit()
         except Exception as e:
             current_app.logger.error(f"[Background Task] An unexpected error occurred for ISBN {isbn}: {e}")
+            if book.title == 'Fetching Title...':
+                book.title = 'Unknown'
+            if book.author == 'Fetching Author...':
+                book.author = 'Unknown'
             user_book.sync_status = 'FAILED'
             db.session.commit()
 if __name__ == '__main__':

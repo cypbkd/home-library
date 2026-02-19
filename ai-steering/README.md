@@ -37,7 +37,7 @@ Known limitation:
 
 ## Latest Validation (February 16, 2026)
 
-- Local tests: `./venv/bin/python -m pytest -q` -> `16 passed`
+- Local tests: `./scripts/test-suite.sh` -> `16 passed`
 - Live deploy: `./scripts/aws/deploy.sh dev` completed successfully in `us-west-2`
 - Live API checks passed:
   - `GET /health` -> `200` with `{"status":"healthy"}`
@@ -56,6 +56,12 @@ flask run
 ```
 
 App URL: `http://127.0.0.1:5000`
+
+Run full tests:
+
+```bash
+./scripts/test-suite.sh
+```
 
 ## Quick Deploy (AWS)
 

@@ -46,11 +46,17 @@
                 </div>
                 <div class="form-group">
                     <label for="status">Status</label>
-                    <select class="form-control" id="status" name="status">
-                        <option value="to-read">To Read</option>
-                        <option value="reading">Reading</option>
-                        <option value="read">Read</option>
-                    </select>
+                    <div class="btn-group btn-group-toggle d-flex" data-toggle="buttons" id="status">
+                        <label class="btn btn-outline-secondary active flex-fill">
+                            <input type="radio" name="status" value="to-read" autocomplete="off" checked> To Read
+                        </label>
+                        <label class="btn btn-outline-secondary flex-fill">
+                            <input type="radio" name="status" value="reading" autocomplete="off"> Reading
+                        </label>
+                        <label class="btn btn-outline-secondary flex-fill">
+                            <input type="radio" name="status" value="read" autocomplete="off"> Read
+                        </label>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>Rating (Optional)</label>
@@ -139,7 +145,8 @@
             }
         }
 
-        function stopScan() {
+        function stopScan(options = {}) {
+            const { preserveStatus = false } = options;
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
                 video.srcObject = null;
@@ -148,8 +155,10 @@
                 clearInterval(scanInterval);
             }
             scanning = false;
-            scanResult.textContent = 'Scan stopped.';
-            scanResult.classList.remove('text-success', 'text-danger');
+            if (!preserveStatus) {
+                scanResult.textContent = 'Scan stopped.';
+                scanResult.classList.remove('text-success', 'text-danger');
+            }
         }
 
         async function decodeWithBarcodeDetector() {
@@ -230,12 +239,19 @@
                     scanResult.classList.remove('text-info'); // Remove initial info class
                     scanResult.classList.add('text-success'); // Add green class
                     scanResult.textContent = `ISBN Scanned: ${data.isbn}. Book will be added automatically in 3 seconds.`;
-                    stopScan(); // Stop scanning once ISBN is found
+                    stopScan({ preserveStatus: true }); // Stop scanning once ISBN is found
 
                     // Auto-submit after 3 seconds
                     setTimeout(() => {
                         document.querySelector('form').submit();
                     }, 3000);
+
+                } else if (response.status === 409) {
+                    stopScan({ preserveStatus: true });
+                    scannerContainer.style.display = 'none';
+                    scanResult.classList.remove('text-success', 'text-info');
+                    scanResult.classList.add('text-danger');
+                    scanResult.textContent = data.message || 'Book already in your library.';
 
                 } else if (!isbnInput.value) { // Only update if no ISBN is found yet
                     scanResult.classList.remove('text-success');

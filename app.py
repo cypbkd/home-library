@@ -178,6 +178,17 @@ def create_app(config_class=Config):
 
         return render_template('edit_book.html', title='Edit Book', user_book=user_book, book=book)
 
+    @app.route("/edit_book", methods=['GET'])
+    @app.route("/edit_book/", methods=['GET'])
+    @login_required
+    def edit_book_missing_id():
+        user_book_id = request.args.get('user_book_id')
+        if user_book_id and user_book_id.isdigit():
+            return redirect(url_for('edit_book', user_book_id=int(user_book_id)))
+
+        flash('Please choose a book to edit from your library.', 'warning')
+        return redirect(url_for('books'))
+
     @app.route("/delete_book/<int:user_book_id>", methods=['POST'])
     @login_required
     def delete_book(user_book_id):

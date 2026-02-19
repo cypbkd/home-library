@@ -2,3 +2,6 @@ venv/
 scripts/aws/build/
 scripts/aws/lambda-package.zip
 scripts/aws/static-build/
+__pycache__/
+*.py[cod]
+.pycache_tmp/
